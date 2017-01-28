@@ -1,0 +1,16 @@
+.metadata/
+RemoteSystemsTempFiles/
+*.xml
+*.pdf
+*.ccxml
+*.cmd
+*.mk
+USB_stickyPrinter/Release/
+USB_stickyPrinter/Debug/
+*.ccsproject
+*.cproject
+*.launch
+*.project
+*.prefs
+*.txt
+*.pptx
