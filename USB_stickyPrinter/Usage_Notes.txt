@@ -1,3 +1,124 @@
+-------------------------------------- nteral Clock Stuff ------------------------------------------------
+1 MHz 
+	BCSCTL1 = CALBC1_1MHZ;
+	DCOCTL  = CALDCO_1MHZ;
+
+8 MHz
+	BCSCTL1 = CALBC1_8MHZ;
+	DCOCTL  = CALDCO_8MHZ;
+
+12 MHz
+	BCSCTL1 = CALBC1_12MHZ;
+	DCOCTL  = CALDCO_12MHZ;
+
+16 MHz
+	BCSCTL1 = CALBC1_16MHZ;
+	DCOCTL  = CALDCO_16MHZ;
+
+The clock control registers are as follows
+
+DCO Control Register
+	DCOx Bits 7-5: 
+		DCO frequency select. These bits select which of the eight discrete DCO frequencies within the range
+		defined by the RSELx setting is selected.
+
+	MODx Bits 4-0: Modulator selection. 
+		These bits define how often the f DCO+1 frequency is used within a period of 32 DCOCLK
+		cycles. During the remaining clock cycles (32-MOD) the f DCO frequency is used. Not useable when
+		DCOx = 7.
+
+BCSCTL1, Basic Clock System Control Register 1
+	XT2OFF Bit 7: XT2 off 
+		This bit turns off the XT2 oscillator
+			Bit = 0: XT2 is on
+			Bit = 1: XT2 is off if it is not used for MCLK or SMCLK.
+			XTS = 1 is not supported in MSP430x20xx and MSP430G2xx devices
+
+	XTS Bit 6: LFXT1 mode select.
+		0 Low-frequency mode
+		1 High-frequency mode
+
+	DIVAx Bits 5-4: Divider for ACLK
+		00 /1
+		01 /2
+		10 /4
+		11 /8
+
+	RSELx Bits 3-0: Range select. 
+		Sixteen different frequency ranges are available. The lowest frequency range is selected by
+		setting RSELx = 0. RSEL3 is ignored when DCOR = 1.
+
+BCSCTL2, Basic Clock System Control Register 2
+	SELMx Bits 7-6: Select MCLK. 
+		These bits select the MCLK source.
+		00 DCOCLK
+		01 DCOCLK
+		10 XT2CLK when XT2 oscillator present on-chip. LFXT1CLK or VLOCLK when XT2 oscillator not present on-chip.
+		11 LFXT1CLK or VLOCLK
+
+	DIVMx Bits 5-4: Divider for MCLK
+		00 /1
+		01 /2
+		10 /4
+		11 /8
+		
+	SELS Bit 3: Select SMCLK. 
+		This bit selects the SMCLK source.
+		0 DCOCLK
+		1 XT2CLK when XT2 oscillator present. LFXT1CLK or VLOCLK when XT2 oscillator not present
+		
+	DIVSx Bits 2-1: Divider for SMCLK
+		00 /1
+		01 /2
+		10 /4
+		11 /8
+
+	DCOR Bit 0: DCO resistor select. 
+		Not available in all devices. See the device-specific data sheet.
+			0 Internal resistor
+			1 External resistor
+
+
+BCSCTL3, Basic Clock System Control Register 3
+	XT2Sx Bits 7-6: XT2 range select. 
+		These bits select the frequency range for XT2.
+			00 0.4- to 1-MHz crystal or resonator
+			01 1- to 3-MHz crystal or resonator
+			10 3- to 16-MHz crystal or resonator
+			11 Digital external 0.4- to 16-MHz clock source
+
+	LFXT1Sx Bits 5-4: Low-frequency clock select and LFXT1 range select. 
+		These bits select between LFXT1 and VLO when XTS = 0, and select the frequency range for LFXT1 when XTS = 1.
+			When XTS = 0:
+				00 32768-Hz crystal on LFXT1
+				01 Reserved
+				10 VLOCLK (Reserved in MSP430F21x1 devices)
+				11 Digital external clock source
+			When XTS = 1 (Not applicable for MSP430x20xx devices, MSP430G2xx1/2/3)
+				00 0.4- to 1-MHz crystal or resonator
+				01 1- to 3-MHz crystal or resonator
+				10 3- to 16-MHz crystal or resonator
+				11 Digital external 0.4- to 16-MHz clock source
+			LFXT1Sx definition for MSP430AFE2xx devices:
+				00 Reserved
+				01 Reserved
+				10 VLOCLK
+				11 Reserved
+
+	XCAPx Bits 3-2: Oscillator capacitor selection. 
+		These bits select the effective capacitance seen by the LFXT1 crystal when
+			XTS = 0. If XTS = 1 or if LFXT1Sx = 11 XCAPx should be 00.
+				00 ~1 pF
+				01 ~6 pF
+				10 ~10 pF
+				11 ~12.5 pF
+			XT2OF Bit 1 XT2 oscillator fault
+				0 No fault condition present
+				1 Fault condition present
+			LFXT1OF Bit 0 LFXT1 oscillator fault
+				0 No fault condition present
+				1 Fault condition present
+
 -------------------------------------- I/O ---------------------------------------------------------------
 Configuring Unused Port Pins
 	Unused I/O pins should be configured as I/O function, output direction, and left unconnected on the PC
@@ -117,4 +238,61 @@ Interrupt Edge Select Registers P1IES, P2IES
 Interrupt Enable P1IE, P2IE
 	Each PxIE bit enables the associated PxIFG interrupt flag.
 		Bit = 0: The interrupt is disabled.
-		Bit = 1: The interrupt is enabled
+		Bit = 1: The interrupt is enabled		
+		
+----------------------------------------------------- WATCHDOG ----------------------------------------------------------
+Didn't find the stuff in the PDF to be terribly useful or descriptive
+went to this url via google searching https://msuraj.wordpress.com/tag/msp430-watchdog/
+
+basics
+	The watchdog timer has a 16 bit timer which counts from 0x00 to 0xffff (65535).
+	When it hits the max value of oxffff the watchdog resets the controller.
+	Our job is to prevent this from happening and we’ve to keep resetting the timer.
+	If the code hangs then the timer is not reset and the watchdog timer overflows and resets the timer.
+	
+The watchdog can be configured by using the WDTCTL register.
+	The Upper 8 bits of the WDTCTL has to be written with 0x5A or 0x69 if you are reading the values.
+	This is the password protect feature of the watchdog. 
+	A failure to write this or writing anything to this nibble will cause a access violation and reset the controller.
+	The lower 8 bits are the control bits and are given as follows.
+	
+The Bit definitions are as follows:
+	WDTHOLD 	=> 	disables the watchdog timer when the bit is 1.
+	WDTNMIES 	=>	selects the triggering edge for the non maskable interrupt on RST/NMI pin. 
+					0 indicates a rising edge and a 1 represents a falling edge.
+	WDTNMI  	=>	enables the nmi function on the RST/NMI pin.
+	WDTTMSEL 	=>	selects the timer mode for the watchdog when the bit is 1.
+	WDTCNTCL 	=> 	watchdog counter clear resets WDT counter.When the bit is set the counter is reset and the bit is reset immediately.
+	WDTSSEL 	=> 	selects the source for the watchdog timer. 0 selects the SMCLK and 1 selects the ACLK.
+	WDTISx 		=> 	The division factor for the clock source.
+				00 => clk source / 32768
+				01 => clk source /8192
+				10 => clk source /512
+				11 => clk source / 64
+				
+There are two other registers which are used with the watchdog.
+IE1 and IFG1.These have the interrupt enable bits and the interrupt flags for the corresponding sources.
+
+In the msp430g2553.h header file I got these handy things as well
+/* WDT-interval times [1ms] coded with Bits 0-2 */
+/* WDT is clocked by fSMCLK (assumed 1MHz) */
+#define WDT_MDLY_32         (WDTPW+WDTTMSEL+WDTCNTCL)                         /* 32ms interval (default) */
+#define WDT_MDLY_8          (WDTPW+WDTTMSEL+WDTCNTCL+WDTIS0)                  /* 8ms     " */
+#define WDT_MDLY_0_5        (WDTPW+WDTTMSEL+WDTCNTCL+WDTIS1)                  /* 0.5ms   " */
+#define WDT_MDLY_0_064      (WDTPW+WDTTMSEL+WDTCNTCL+WDTIS1+WDTIS0)           /* 0.064ms " */
+/* WDT is clocked by fACLK (assumed 32KHz) */
+#define WDT_ADLY_1000       (WDTPW+WDTTMSEL+WDTCNTCL+WDTSSEL)                 /* 1000ms  " */
+#define WDT_ADLY_250        (WDTPW+WDTTMSEL+WDTCNTCL+WDTSSEL+WDTIS0)          /* 250ms   " */
+#define WDT_ADLY_16         (WDTPW+WDTTMSEL+WDTCNTCL+WDTSSEL+WDTIS1)          /* 16ms    " */
+#define WDT_ADLY_1_9        (WDTPW+WDTTMSEL+WDTCNTCL+WDTSSEL+WDTIS1+WDTIS0)   /* 1.9ms   " */
+/* Watchdog mode -> reset after expired time */
+/* WDT is clocked by fSMCLK (assumed 1MHz) */
+#define WDT_MRST_32         (WDTPW+WDTCNTCL)                                  /* 32ms interval (default) */
+#define WDT_MRST_8          (WDTPW+WDTCNTCL+WDTIS0)                           /* 8ms     " */
+#define WDT_MRST_0_5        (WDTPW+WDTCNTCL+WDTIS1)                           /* 0.5ms   " */
+#define WDT_MRST_0_064      (WDTPW+WDTCNTCL+WDTIS1+WDTIS0)                    /* 0.064ms " */
+/* WDT is clocked by fACLK (assumed 32KHz) */
+#define WDT_ARST_1000       (WDTPW+WDTCNTCL+WDTSSEL)                          /* 1000ms  " */
+#define WDT_ARST_250        (WDTPW+WDTCNTCL+WDTSSEL+WDTIS0)                   /* 250ms   " */
+#define WDT_ARST_16         (WDTPW+WDTCNTCL+WDTSSEL+WDTIS1)                   /* 16ms    " */
+#define WDT_ARST_1_9        (WDTPW+WDTCNTCL+WDTSSEL+WDTIS1+WDTIS0)            /* 1.9ms   " */
